@@ -1,0 +1,90 @@
+---
+title: "college-outcomes"
+author: "Ryan Southward"
+date: "6/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r marrige_by_college_tier}
+clean_data %>%
+  select(name, tier, k_married, tier_name) %>%
+  mutate(tier_name = as.factor(tier_name)) %>%
+  drop_na() %>%
+  group_by(tier_name) %>%
+  summarise(avg_married = mean(k_married)) %>%
+  ggplot(aes(x = tier_name, y = avg_married)) +
+  geom_col() + 
+  labs(title = "Avg. Fraction of Kids Married \nbased on the Tier of their College.",
+       subtitle = "Kids from lower-income parents are married \nless frequently.
+      Marriges of kids with wealthier parents \nare distributed more evenly.", 
+      x = "Tier of Institution",
+      y = "Average Fraction Married of a College Tier", 
+      caption = "Source: Opportunity Insight.") + 
+  coord_flip() + 
+  scale_fill_canva() + 
+  theme_economist_white()
+```
+
+```{r marrige_by_parent_quint}
+clean_data %>%
+  select(name, tier, quintile, k_married_2014, par_toppt1pc) %>%
+  drop_na() %>%
+  ggplot(aes(x = k_married_2014)) +
+  geom_freqpoly() +
+  facet_wrap(~quintile) + 
+  labs(title = "Distribution of Marrige Rates at a College by Parental Income Quintile.",
+       subtitle = "Kids from lower-income parents are married less frequently. \nMarriges of kids with wealthier parents are distributed more evenly.", 
+      x = "Percent of kids married.",
+      y = "Count", 
+      caption = "Source: Opportunity Insight.") +
+  theme_tufte()
+```
+
+```{r stanford_plot}
+stanford_plot <- clean_data %>%
+  filter(name == "Stanford University") %>%
+  mutate(kid_quintile = as.integer(kid_quintile))  %>%
+  ggplot(aes(x = kid_quintile, y = prob_based_on_k_par_quintile, color = quintile)) +
+  geom_jitter() +
+  geom_smooth(se = FALSE, method = "loess", formula = y ~ x, span = 1) +
+  labs(title = "Likelyhood of a Stanford Student being in a specific Income Quintile based on the Income Quintile of their Parent", 
+       subtitle = "No matter the Parent Quintile, Stanford students have a high probability of being in the highest \nincome quintile.",
+       x = "Kid Income Quintile",
+       y = "Probability", 
+       caption = "Source: Opportunity Insight, Graph by Ryan Southward", 
+       color = "Parent Income Quintile") +
+  transition_time(cohort)+
+  labs(title = "Year: {frame_time}") 
+
+animate(stanford_plot, fps=8)
+```
+
+```{r multi_college_plot}
+college_plot <- clean_data %>%
+  filter(name == "Stanford University" | name=="Harvard University" | name == "University Of Alabama") %>%
+  mutate(kid_quintile = as.integer(kid_quintile))  %>%
+  ggplot(aes(x = kid_quintile, y = prob_based_on_k_par_quintile, color = name)) +
+  geom_jitter(alpha = .5) +
+  geom_smooth(se = FALSE, method = "loess", formula = y ~ x)+
+  labs(title = "Probability of Kid Outcome based on Parent Outcome for Different Colleges", 
+       subtitle = "Stanford and Harvard are very similar.",
+       y = "Probability",
+       x = "Kid's Income Quintile Outcome",
+       caption = "Source: Opportunity Insight, Graph by Ryan Southward") + 
+  transition_time(quintile)+
+   transition_states(
+    quintile,
+    transition_length = 5,
+    state_length = 3
+  ) + 
+  labs(title = "Parent Quintile: {closest_state}. 1 is the lowest, 5 is the highest.") 
+
+# geom_ribbon(aes(ymin = 0,ymax = predict(loess(prob_based_on_k_par_quintile ~ kid_quintile))),
+# alpha = 0.3,fill = "red") 
+  
+animate(college_plot)
+```
